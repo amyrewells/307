@@ -1,0 +1,142 @@
+---
+title: "Biol 307 Project"
+author: "Amyre"
+date: "2025-03-31"
+output: pdf_document
+---
+
+## Set Up 
+
+***load libraries***
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+***read in data***
+
+```{r}
+quadrat_data<- read.csv("./data/QuadratData.csv")
+tree_data<- read.csv("./data/TreeMeasurements.csv")
+```
+
+***calculate important metrics***
+
+```{r}
+#add diamter over 7 means to main dataframe
+mean_diameter<- tree_data %>%
+  group_by(Quadrat_ID) %>%
+  summarise(mean_measurement = mean(Tree_Measurement))
+
+quadrat_data$MeanDiameter<- mean_diameter$mean_measurement
+
+#relative abundance of large trees (trees over 7cm diameter)
+quadrat_data$rel_large<- quadrat_data$Over_7/quadrat_data$Total
+```
+
+***format categorical data***
+
+```{r}
+quadrat_data$Quadrat_ID<- as.factor(quadrat_data$Quadrat_ID)
+
+quadrat_data$Trail<- trimws(quadrat_data$Trail)
+quadrat_data$Trail<- as.factor(quadrat_data$Trail)
+
+quadrat_data$Dist_Arroyo<- as.factor(quadrat_data$Dist_Arroyo)
+```
+
+***subset near and far data***
+
+```{r}
+near_data<- subset(quadrat_data, Dist_Arroyo=="Near")
+
+far_data<- subset(quadrat_data, Dist_Arroyo=="Far")
+```
+
+***check for normality***
+
+```{r}
+shapiro.test(quadrat_data$Total)
+shapiro.test(quadrat_data$rel_large)
+shapiro.test(quadrat_data$MeanDiameter)
+
+```
+
+## Compare Total Number of Trees 
+
+***visualize***
+
+```{r}
+Figure3<- ggplot(quadrat_data, aes(Dist_Arroyo, Total, fill = Dist_Arroyo))+
+  geom_boxplot()+
+  labs(x="Distance from Arroyo", y="Number of Trees")+
+  theme(legend.position = "none")
+```
+
+***independent t-test***
+
+```{r}
+t_test_result1 <- t.test(near_data$Total, far_data$Total)
+print(t_test_result1)
+```
+
+## Comparing Relative Abundance of Large Trees
+
+***visualize***
+
+```{r}
+Figure4<- ggplot(quadrat_data, aes(Dist_Arroyo, rel_large, fill = Dist_Arroyo))+
+  geom_boxplot()+
+  labs(x="Distance from Arroyo", y="Proportion of Trees over 7cm DBH")+
+  theme(legend.position = "none")
+```
+
+***independent t-test***
+
+```{r}
+t_test_result2 <- t.test(near_data$rel_large, far_data$rel_large)
+print(t_test_result2)
+```
+
+## Comparing Mean DBH in Trees Above 7cm DBH
+
+***visualize***
+
+```{r}
+Figure5<- ggplot(quadrat_data, aes(Dist_Arroyo, MeanDiameter, fill = Dist_Arroyo))+
+  geom_boxplot()+
+  labs(x="Distance from Arroyo", y="Mean DBH in Trees over 7cm DBH")+
+  theme(legend.position = "none")
+```
+
+***independent t-test***
+
+```{r}
+t_test_result3 <- t.test(near_data$MeanDiameter, far_data$MeanDiameter)
+print(t_test_result3)
+```
+
+## Controlling for Potenial Confounding Variables
+
+***ANCOVA***
+
+```{r}
+ancova_model1 <- aov(Total ~ Dist_Arroyo + Trail, data = quadrat_data)
+summary(ancova_model1)
+
+ancova_model2 <- aov(rel_large ~ Dist_Arroyo + Trail, data = quadrat_data)
+summary(ancova_model2)
+
+ancova_model3 <- aov(MeanDiameter ~ Dist_Arroyo + Trail, data = quadrat_data)
+summary(ancova_model3)
+```
+
+## Save plots 
+
+```{r}
+ggsave("./Figures/Fig3.png", plot = Figure3, width = 8, height = 6)
+ggsave("./Figures/Fig4.png", plot = Figure4, width = 8, height = 6)
+ggsave("./Figures/Fig5.png", plot = Figure5, width = 8, height = 6)
+
+```
